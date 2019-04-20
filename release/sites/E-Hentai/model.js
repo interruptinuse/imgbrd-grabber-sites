@@ -39,6 +39,21 @@ export var source = {
                     key: "PassWord",
                     type: "password",
                 },
+                {
+                    type: "const",
+                    key: "CookieDate",
+                    value: "1",
+                },
+                {
+                    type: "const",
+                    key: "b",
+                    value: "d",
+                },
+                {
+                    type: "const",
+                    key: "bt",
+                    value: "1-1",
+                },
             ],
             check: {
                 type: "cookie",
@@ -56,14 +71,27 @@ export var source = {
                     return "/?page=" + (query.page - 1) + "&f_search=" + encodeURIComponent(query.search);
                 },
                 parse: function (src) {
-                    var matches = Grabber.regexMatches('<tr[^>]*><td[^>]*><div[^>]*>(?<category>[^<]*)</div></td><td[^>]*><div[^>]* id="i(?<id>\\d+)"[^>]*>(?:<img src="(?<preview_url>[^"]+)"[^>]*>|(?<encoded_thumbnail>[^<]*))</div><div[^>]*>(?<date>[^<]+)</div>.+?<div><a href="(?<page_url>[^"]+)">(?<name>[^<]+)</a>.+?<a[^>]+>(?<author>[^<]+)</a>', src);
-                    var images = matches.map(function (match) {
+                    var rows = src.match(/<tr[^>]*>(.+?)<\/tr>/g);
+                    var images = rows.map(function (row) {
+                        var match = {};
                         match["type"] = "gallery";
-                        if ("encoded_thumbnail" in match && match["encoded_thumbnail"].length > 0) {
-                            var parts = match["encoded_thumbnail"].split("~");
-                            var protocol = parts[0] === "init" ? "http://" : "https://";
-                            match["preview_url"] = protocol + parts[1] + "/" + parts[2];
-                            delete match["encoded_thumbnail"];
+                        var urlName = row.match(new RegExp('<a href="([^"]+?/g/[^"]+)"><div[^>]*>([^>]+)<'));
+                        var preview = row.match(new RegExp('<img[^>]* src="([^"]+)"(?: data-src="([^"]+)")?[^>]*>'));
+                        var date = row.match(/>(\d{4}-\d{2}-\d{2} \d{2}:\d{2})</);
+                        var author = row.match(new RegExp('<a href="[^"]+?/uploader/[^"]+">([^>]+)</a>'));
+                        var pages = row.match(/>(\d+) pages</);
+                        if (!urlName || !preview || !pages) {
+                            return;
+                        }
+                        match["page_url"] = urlName[1];
+                        match["name"] = urlName[2];
+                        match["preview_url"] = preview[2] || preview[1];
+                        match["gallery_count"] = pages[1];
+                        if (date) {
+                            match["date"] = date[1];
+                        }
+                        if (author) {
+                            match["author"] = author[1];
                         }
                         var gallery = Grabber.regexMatches("/g/(?<id>\\d+)/(?<token>[^/]+)/", match["page_url"]);
                         match["id"] = gallery[0]["id"];
@@ -74,7 +102,7 @@ export var source = {
                     return {
                         images: images,
                         pageCount: Grabber.countToInt(Grabber.regexToConst("page", ">(?<page>[0-9,]+)</a></td><td[^>]*>(?:&gt;|<a[^>]*>&gt;</a>)</td>", src)),
-                        imageCount: Grabber.countToInt(Grabber.regexToConst("count", ">Showing page \\d+ of (?<count>[0-9,]+) results<", src)),
+                        imageCount: Grabber.countToInt(Grabber.regexToConst("count", ">Showing (?<count>[0-9,]+) results<", src)),
                     };
                 },
             },
@@ -105,17 +133,6 @@ export var source = {
                         imageCount: Grabber.countToInt(Grabber.regexToConst("count", '<p class="gpc">Showing [0-9,]+ - [0-9,]+ of (?<count>[0-9,]+) images</p>', src)),
                         urlNextPage: Grabber.regexToConst("url", '<td[^>]*><a[^>]+href="(?<url>[^"]+)"[^>]*>&gt;</a></td>', src),
                         urlPrevPage: Grabber.regexToConst("url", '<td[^>]*><a[^>]+href="(?<url>[^"]+)"[^>]*>&lt;</a></td>', src),
-                    };
-                },
-            },
-            details: {
-                url: function (id, md5) {
-                    return { error: "Not supported (view token)" };
-                },
-                parse: function (src) {
-                    // Grabber.regexMatches("<div>(?<filename>[^:]*) :: (?<width>\\d+) x (?<height>\\d+) :: (?<filesize>[^ ]+ [KM]B)</div>", src);
-                    return {
-                        imageUrl: Grabber.regexToConst("url", '<img id="img" src="(?<url>[^"]+)"', src),
                     };
                 },
             },
