@@ -5,6 +5,29 @@ function getExtension(url) {
     }
     return "";
 }
+function parseSearch(search) {
+    var user = "";
+    var retweets = true;
+    var replies = true;
+    for (var _i = 0, search_1 = search; _i < search_1.length; _i++) {
+        var tag = search_1[_i];
+        tag = tag.trim();
+        if (tag.substr(0, 9) === "retweets:") {
+            retweets = tag.substr(9) === "yes";
+        }
+        else if (tag.substr(0, 8) === "replies:") {
+            replies = tag.substr(8) === "yes";
+        }
+        else {
+            user = tag;
+        }
+    }
+    return {
+        user: user,
+        retweets: retweets,
+        replies: replies,
+    };
+}
 function parseTweetMedia(sc, original, media) {
     var d = {};
     var sizes = media["sizes"];
@@ -82,6 +105,7 @@ function parseTweet(sc, gallery) {
 }
 export var source = {
     name: "Twitter",
+    modifiers: ["retweets:yes", "retweets:no", "replies:yes", "replies:no"],
     tokens: ["tweet_id", "original_tweet_id", "original_author", "original_author_id", "original_date"],
     auth: {
         oauth2: {
@@ -98,8 +122,15 @@ export var source = {
             search: {
                 url: function (query, opts, previous) {
                     try {
+                        var search = parseSearch(query.search.split(" "));
                         var pageUrl = Grabber.pageUrl(query.page, previous, 1, "", "&since_id={max}", "&max_id={min-1}");
-                        return "/1.1/statuses/user_timeline.json?include_rts=true&exclude_replies=false&tweet_mode=extended&screen_name=" + encodeURIComponent(query.search) + pageUrl;
+                        var params = [
+                            "include_rts=" + (search.retweets ? "true" : "false"),
+                            "exclude_replies=" + (!search.replies ? "true" : "false"),
+                            "tweet_mode=extended",
+                            "screen_name=" + encodeURIComponent(search.user),
+                        ];
+                        return "/1.1/statuses/user_timeline.json?" + params.join("&") + pageUrl;
                     }
                     catch (e) {
                         return { error: e.message };

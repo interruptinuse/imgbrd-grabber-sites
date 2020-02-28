@@ -300,6 +300,20 @@ export var source = {
                     };
                 },
             },
+            tagTypes: {
+                url: function () {
+                    return "/tags";
+                },
+                parse: function (src) {
+                    var contents = src.match(/<select[^>]* name="search\[category\]"[^>]*>([\s\S]+)<\/select>/)[1];
+                    var results = Grabber.regexMatches('<option value="(?<id>\\d+)">(?<name>[^<]+)</option>', contents);
+                    var types = results.map(function (r) { return ({
+                        id: r.id,
+                        name: r.name.toLowerCase(),
+                    }); });
+                    return { types: types };
+                },
+            },
             tags: {
                 url: function (query, opts) {
                     return "/tags?limit=" + opts.limit + "&page=" + query.page;

@@ -23,7 +23,7 @@ export var source = {
             auth: [],
             forcedLimit: 20,
             search: {
-                url: function (query, opts, previous) {
+                url: function (query) {
                     var page = (query.page - 1) * 20;
                     var search = query.search && query.search.length > 0 ? encodeURIComponent(query.search) : "all";
                     return "/index.php?page=post&s=list&tags=" + search + "&pid=" + page;

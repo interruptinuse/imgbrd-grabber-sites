@@ -26,7 +26,7 @@ export var source = {
             auth: ["oauth2"],
             maxLimit: 1000,
             search: {
-                url: function (query, opts, previous) {
+                url: function (query, opts) {
                     var params = [
                         "q=" + query.search,
                         "page=" + query.page,
@@ -79,7 +79,7 @@ export var source = {
                 },
             },
             gallery: {
-                url: function (query, opts) {
+                url: function (query) {
                     return "https://public-api.secure.pixiv.net/v1/works/" + query.id + ".json?image_sizes=large";
                 },
                 parse: function (src) {
@@ -116,7 +116,7 @@ export var source = {
             auth: [],
             forcedLimit: 40,
             search: {
-                url: function (query, opts, previous) {
+                url: function (query) {
                     return "/search.php?s_mode=s_tag&order=date_d&p=" + query.page + "&word=" + encodeURIComponent(query.search);
                 },
                 parse: function (src) {
@@ -157,7 +157,7 @@ export var source = {
                 },
             },
             gallery: {
-                url: function (query, opts) {
+                url: function (query) {
                     return "/member_illust.php?mode=manga&illust_id=" + query.id;
                 },
                 parse: function (src) {

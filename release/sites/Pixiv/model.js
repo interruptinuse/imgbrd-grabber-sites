@@ -1,14 +1,32 @@
-function urlSampleToFull(url) {
-    return url
-        .replace("img-master", "img-original")
-        .replace(/_master\d+\./, ".");
-}
 function urlSampleToThumbnail(url) {
     return url.replace("/img-master/", "/c/150x150/img-master/");
 }
+function parseSearch(search) {
+    var modes = {
+        "partial": "partial_match_for_tags",
+        "full": "exact_match_for_tags",
+        "tc": "title_and_caption",
+    };
+    var mode = "partial_match_for_tags";
+    var tags = [];
+    var parts = search.split(" ");
+    for (var _i = 0, parts_1 = parts; _i < parts_1.length; _i++) {
+        var tag = parts_1[_i];
+        var part = tag.trim();
+        if (part.indexOf("mode:") === 0) {
+            var tmode = part.substr(5);
+            if (tmode in modes) {
+                mode = modes[tmode];
+                continue;
+            }
+        }
+        tags.push(part);
+    }
+    return { mode: mode, tags: tags };
+}
 export var source = {
     name: "Pixiv",
-    modifiers: [],
+    modifiers: ["mode:partial", "mode:full", "mode:tc"],
     forcedTokens: [],
     searchFormat: {
         and: " ",
@@ -23,26 +41,27 @@ export var source = {
     apis: {
         json: {
             name: "JSON",
-            auth: ["oauth2"],
+            auth: [],
             maxLimit: 1000,
             search: {
-                url: function (query, opts, previous) {
-                    var params = [
-                        "q=" + query.search,
-                        "page=" + query.page,
-                        "per_page=" + opts.limit,
-                        "period=all",
-                        "order=desc",
-                        "mode=caption",
-                        "sort=date",
+                url: function (query, opts) {
+                    if (!opts.loggedIn) {
+                        return { error: "You need to be logged in to use the Pixiv source." };
+                    }
+                    var search = parseSearch(query.search);
+                    var illustParams = [
+                        "word=" + encodeURIComponent(search.tags.join(" ")),
+                        "offset=" + ((query.page - 1) * 30),
+                        "search_target=" + search.mode,
+                        "sort=date_desc",
+                        "filter=for_ios",
                         "image_sizes=small,medium,large",
                     ];
-                    return "https://public-api.secure.pixiv.net/v1/search/works.json?" + params.join("&");
+                    return "https://app-api.pixiv.net/v1/search/illust?" + illustParams.join("&");
                 },
                 parse: function (src) {
                     var map = {
                         "name": "title",
-                        "created_at": "created_time",
                         "file_url": "image_urls.large",
                         "sample_url": "image_urls.medium",
                         "preview_url": "image_urls.small",
@@ -56,7 +75,7 @@ export var source = {
                     };
                     var data = JSON.parse(src);
                     var images = [];
-                    for (var _i = 0, _a = data["response"]; _i < _a.length; _i++) {
+                    for (var _i = 0, _a = (data["response"] || data["illusts"]); _i < _a.length; _i++) {
                         var image = _a[_i];
                         var img = Grabber.mapFields(image, map);
                         if (image["age_limit"] === "all-age") {
@@ -69,17 +88,36 @@ export var source = {
                             img.type = "gallery";
                             img.gallery_count = image["page_count"];
                         }
+                        if (image["meta_pages"] && image["meta_pages"].length > 1) {
+                            img.type = "gallery";
+                            img.gallery_count = image["meta_pages"].length;
+                        }
+                        img.created_at = image["created_time"] || image["create_date"];
+                        if (image["caption"]) {
+                            img.description = image["caption"];
+                        }
+                        if (!img.preview_url) {
+                            img.preview_url = image["image_urls"]["medium"];
+                        }
                         images.push(img);
                     }
-                    return {
-                        images: images,
-                        imageCount: data["pagination"]["total"],
-                        pageCount: data["pagination"]["pages"],
-                    };
+                    if (data["response"]) {
+                        return {
+                            images: images,
+                            imageCount: data["pagination"]["total"],
+                            pageCount: data["pagination"]["pages"],
+                        };
+                    }
+                    else {
+                        return {
+                            images: images,
+                            urlNextPage: data["next_url"],
+                        };
+                    }
                 },
             },
             gallery: {
-                url: function (query, opts) {
+                url: function (query) {
                     return "https://public-api.secure.pixiv.net/v1/works/" + query.id + ".json?image_sizes=large";
                 },
                 parse: function (src) {
@@ -99,6 +137,9 @@ export var source = {
             },
             details: {
                 url: function (id, md5) {
+                    if (id === "" || id === "0") {
+                        return "";
+                    } // Gallery images don't have an ID
                     return "https://public-api.secure.pixiv.net/v1/works/" + id + ".json?image_sizes=large";
                 },
                 parse: function (src) {
@@ -107,81 +148,6 @@ export var source = {
                         imageUrl: data["image_urls"]["large"],
                         tags: data["tags"],
                         createdAt: data["created_time"],
-                    };
-                },
-            },
-        },
-        html: {
-            name: "Regex",
-            auth: [],
-            forcedLimit: 40,
-            search: {
-                url: function (query, opts, previous) {
-                    return "/search.php?s_mode=s_tag&order=date_d&p=" + query.page + "&word=" + encodeURIComponent(query.search);
-                },
-                parse: function (src) {
-                    // Page data is stored in the data attributes of a hidden React container
-                    var rawData = src.match(/<input type="hidden"\s*id="js-mount-point-search-result-list"\s*data-items="([^"]+)"\s*data-related-tags="([^"]+)"/i);
-                    var rawItems = JSON.parse(Grabber.htmlDecode(rawData[1]));
-                    var rawTags = JSON.parse(Grabber.htmlDecode(rawData[2]));
-                    // Parse tags, giving translation the priority to allow user to use other languages than Japanese
-                    var tags = rawTags.map(function (data) {
-                        return data["tag_translation"] || data["tag"];
-                    });
-                    // Parse images
-                    var imgMap = {
-                        id: "illustId",
-                        name: "illustTitle",
-                        author: "userName",
-                        creator_id: "userId",
-                        tags: "tags",
-                        width: "width",
-                        height: "height",
-                        preview_url: "url",
-                    };
-                    var images = rawItems.map(function (data) {
-                        var img = Grabber.mapFields(data, imgMap);
-                        img.sample_url = img.preview_url.replace(/\/c\/\d+x\d+\/img-master\//g, "/img-master/");
-                        img.file_url = urlSampleToFull(img.sample_url);
-                        if (data["pageCount"] > 1) {
-                            img.type = "gallery";
-                            img.gallery_count = data["pageCount"];
-                        }
-                        return img;
-                    });
-                    return {
-                        images: images,
-                        tags: tags,
-                        imageCount: Grabber.countToInt(Grabber.regexToConst("count", '<span class="count-badge">(?<count>\\d+)[^<]+</span>', src)),
-                    };
-                },
-            },
-            gallery: {
-                url: function (query, opts) {
-                    return "/member_illust.php?mode=manga&illust_id=" + query.id;
-                },
-                parse: function (src) {
-                    var rawImages = Grabber.regexMatches('<img[^<]+data-filter="manga-image"[^>]*data-src="(?<sample_url>[^"]+)"[^>]*>', src);
-                    var images = rawImages.map(function (img) {
-                        img.file_url = urlSampleToFull(img.sample_url);
-                        img.preview_url = urlSampleToThumbnail(img.sample_url);
-                        return img;
-                    });
-                    return { images: images };
-                },
-            },
-            details: {
-                url: function (id, md5) {
-                    return "/member_illust.php?mode=medium&illust_id=" + id;
-                },
-                parse: function (src) {
-                    var data = Grabber.regexMatch('<div class="img-container">\\s*<a[^>]+>\\s*<img\\s+src="(?<sample_url>[^"]+)"\\s*alt="(?<title>[^"]+)/(?<author>[^"]+)"', src);
-                    var tags = Grabber.regexToTags('<a href="/tags\\.php[^"]+" class="text">(?<name>[^<]+)<', src);
-                    // Page data is stored in a JS call when logged in
-                    // const rawData = src.match(/}\)\(([^)]+)\)/)[1];
-                    return {
-                        imageUrl: urlSampleToFull(data["sample_url"]),
-                        tags: tags,
                     };
                 },
             },

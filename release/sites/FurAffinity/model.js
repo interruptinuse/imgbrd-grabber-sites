@@ -17,7 +17,7 @@ export var source = {
             forcedLimit: 24,
             search: {
                 parseErrors: true,
-                url: function (query, opts, previous) {
+                url: function (query) {
                     return "/search/?q=" + encodeURIComponent(query.search) + "&order-by=date&page=" + query.page + "&perpage=24";
                 },
                 parse: function (src, statusCode) {

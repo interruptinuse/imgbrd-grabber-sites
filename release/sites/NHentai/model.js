@@ -34,7 +34,7 @@ export var source = {
             auth: [],
             forcedLimit: 25,
             search: {
-                url: function (query, opts, previous) {
+                url: function (query) {
                     if (query.search.length > 0) {
                         return "/api/galleries/search?page=" + query.page + "&sort=date&query=" + encodeURIComponent(query.search);
                     }
@@ -65,7 +65,7 @@ export var source = {
                 },
             },
             gallery: {
-                url: function (query, opts) {
+                url: function (query) {
                     return "/api/gallery/" + query.id;
                 },
                 parse: function (src) {
@@ -97,7 +97,7 @@ export var source = {
             auth: [],
             forcedLimit: 25,
             search: {
-                url: function (query, opts, previous) {
+                url: function (query) {
                     if (query.search.length > 0) {
                         return "/search/?page=" + query.page + "&q=" + encodeURIComponent(query.search);
                     }
@@ -114,7 +114,7 @@ export var source = {
                 },
             },
             gallery: {
-                url: function (query, opts) {
+                url: function (query) {
                     return "/g/" + query.id + "/";
                 },
                 parse: function (src) {

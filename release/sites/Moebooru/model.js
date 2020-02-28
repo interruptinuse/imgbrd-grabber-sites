@@ -1,5 +1,5 @@
 function completeImage(img) {
-    if (!img.file_url && img.file_url.length < 5) {
+    if (!img.file_url || img.file_url.length < 5) {
         img.file_url = img.preview_url.replace("/preview/", "/");
     }
     return img;
@@ -34,10 +34,15 @@ export var source = {
                     type: "password",
                 },
                 {
+                    id: "salt",
+                    type: "salt",
+                    def: "choujin-steiner--%password%--",
+                },
+                {
                     key: "password_hash",
                     type: "hash",
                     hash: "sha1",
-                    salt: "choujin-steiner--%password%--",
+                    salt: "%salt%",
                 },
             ],
         },
@@ -63,7 +68,7 @@ export var source = {
                 },
             },
             tags: {
-                url: function (query, opts) {
+                url: function (query) {
                     return "/tag.json?page=" + query.page;
                 },
                 parse: function (src) {
@@ -108,7 +113,7 @@ export var source = {
                 },
             },
             tags: {
-                url: function (query, opts) {
+                url: function (query) {
                     return "/tag.xml?page=" + query.page;
                 },
                 parse: function (src) {
@@ -162,9 +167,23 @@ export var source = {
                     };
                 },
             },
+            tagTypes: {
+                url: function () {
+                    return "/tag";
+                },
+                parse: function (src) {
+                    var contents = src.match(/<select[^>]* name="type"[^>]*>([\s\S]+)<\/select>/)[1];
+                    var results = Grabber.regexMatches('<option value="(?<id>\\d+)">(?<name>[^<]+)</option>', contents);
+                    var types = results.map(function (r) { return ({
+                        id: r.id,
+                        name: r.name.toLowerCase(),
+                    }); });
+                    return { types: types };
+                },
+            },
             tags: {
                 url: function (query, opts) {
-                    return "/tag?page=" + query.page;
+                    return "/tag?limit=" + opts.limit + "&page=" + query.page;
                 },
                 parse: function (src) {
                     return {

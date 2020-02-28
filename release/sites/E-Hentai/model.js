@@ -18,9 +18,26 @@ function sizeToInt(size) {
     }
     return val;
 }
+function parseSearch(srch) {
+    var cats = "0";
+    var tags = [];
+    var parts = srch.split(" ");
+    for (var _i = 0, parts_1 = parts; _i < parts_1.length; _i++) {
+        var tag = parts_1[_i];
+        var part = tag.trim();
+        if (part.indexOf("cats:") === 0) {
+            cats = part.substr(5);
+        }
+        else {
+            tags.push(part);
+        }
+    }
+    var search = tags.join(" ");
+    return { cats: cats, search: search };
+}
 export var source = {
     name: "E-Hentai",
-    modifiers: [],
+    modifiers: ["cats:"],
     forcedTokens: ["*"],
     searchFormat: {
         and: " ",
@@ -67,8 +84,9 @@ export var source = {
             auth: [],
             forcedLimit: 25,
             search: {
-                url: function (query, opts, previous) {
-                    return "/?page=" + (query.page - 1) + "&f_search=" + encodeURIComponent(query.search);
+                url: function (query) {
+                    var s = parseSearch(query.search);
+                    return "/?page=" + (query.page - 1) + "&f_cats=" + s.cats + "&f_search=" + encodeURIComponent(s.search);
                 },
                 parse: function (src) {
                     var rows = src.match(/<tr[^>]*>(.+?)<\/tr>/g);
@@ -107,7 +125,7 @@ export var source = {
                 },
             },
             gallery: {
-                url: function (query, opts) {
+                url: function (query) {
                     return "/g/" + query.md5 + "/?p=" + (query.page - 1);
                 },
                 parse: function (src) {

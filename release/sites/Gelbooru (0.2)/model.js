@@ -43,7 +43,7 @@ export var source = {
             auth: [],
             maxLimit: 1000,
             search: {
-                url: function (query, opts, previous) {
+                url: function (query, opts) {
                     var page = query.page - 1;
                     var search = query.search.replace(/(^| )order:/gi, "$1sort:");
                     var fav = search.match(/(?:^| )fav:(\d+)(?:$| )/);
@@ -117,7 +117,7 @@ export var source = {
                 },
             },
             tags: {
-                url: function (query, opts) {
+                url: function (query) {
                     var page = (query.page - 1) * 50;
                     return "/index.php?page=tags&s=list&pid=" + page;
                 },

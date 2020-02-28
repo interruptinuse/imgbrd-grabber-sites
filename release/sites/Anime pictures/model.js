@@ -5,7 +5,6 @@ function completeImage(img) {
     if (img.ext && img.ext[0] === ".") {
         img.ext = img.ext.substring(1);
     }
-    img.file_url = "/pictures/download_image/" + img.id + "." + (img.ext || "jpg");
     if ((!img.sample_url || img.sample_url.length < 5) && img.preview_url && img.preview_url.length >= 5) {
         img.sample_url = img.preview_url
             .replace("_cp.", "_bp.")
@@ -13,6 +12,7 @@ function completeImage(img) {
     }
     img.sample_url = noWebp(img.sample_url || "");
     img.preview_url = noWebp(img.preview_url || "");
+    img.file_url = img.sample_url.replace(/_[scb]p.\w{2,5}$/, "." + img.ext);
     return img;
 }
 function sizeToUrl(size, key, ret) {
@@ -113,7 +113,7 @@ export var source = {
             name: "JSON",
             auth: [],
             search: {
-                url: function (query, opts, previous) {
+                url: function (query, opts) {
                     var page = query.page - 1;
                     return "/pictures/view_posts/" + page + "?" + searchToUrl(query.search) + "&posts_per_page=" + opts.limit + "&lang=en&type=json";
                 },
@@ -172,7 +172,7 @@ export var source = {
             auth: [],
             forcedLimit: 80,
             search: {
-                url: function (query, opts, previous) {
+                url: function (query) {
                     var page = query.page - 1;
                     return "/pictures/view_posts/" + page + "?" + searchToUrl(query.search) + "&lang=en";
                 },
@@ -197,7 +197,7 @@ export var source = {
                 },
             },
             tags: {
-                url: function (query, opts) {
+                url: function (query) {
                     var page = query.page - 1;
                     return "/pictures/view_all_tags/" + page + "?lang=en";
                 },

@@ -18,6 +18,34 @@ function completeImage(img) {
     }
     return img;
 }
+function searchToArg(search) {
+    var sf;
+    var sd = "desc";
+    var tags = [];
+    var parts = search.split(" ");
+    for (var _i = 0, parts_1 = parts; _i < parts_1.length; _i++) {
+        var tag = parts_1[_i];
+        var part = tag.trim();
+        if (part.indexOf("order:") === 0) {
+            var orders = part.substr(6).split("_");
+            sf = orders[0];
+            if (orders.length > 1) {
+                sd = orders[1];
+            }
+        }
+        else {
+            tags.push(part);
+        }
+    }
+    var ret = encodeURIComponent(tags.join(" "));
+    if (sf) {
+        ret += "&sf=" + sf;
+        if (sd) {
+            ret += "&sd=" + sd;
+        }
+    }
+    return ret;
+}
 export var source = {
     name: "Booru-on-rails",
     modifiers: ["faved_by:", "width:", "height:", "uploader:", "source_url:", "description:", "sha512_hash:", "aspect_ratio:"],
@@ -50,11 +78,11 @@ export var source = {
             auth: [],
             forcedLimit: 15,
             search: {
-                url: function (query, opts, previous) {
+                url: function (query) {
                     if (!query.search || query.search.length === 0) {
                         return "/images.json?page=" + query.page + "&nocomments=1&nofav=1";
                     }
-                    return "/search.json?page=" + query.page + "&q=" + encodeURIComponent(query.search) + "&nocomments=1&nofav=1";
+                    return "/search.json?page=" + query.page + "&q=" + searchToArg(query.search) + "&nocomments=1&nofav=1";
                 },
                 parse: function (src) {
                     var map = {
@@ -114,11 +142,11 @@ export var source = {
             auth: [],
             forcedLimit: 15,
             search: {
-                url: function (query, opts, previous) {
+                url: function (query) {
                     if (!query.search || query.search.length === 0) {
                         return "/images/page/" + query.page;
                     }
-                    return "/search?page=" + query.page + "&sbq=" + encodeURIComponent(query.search);
+                    return "/search?page=" + query.page + "&sbq=" + searchToArg(query.search);
                 },
                 parse: function (src) {
                     return {
@@ -139,7 +167,7 @@ export var source = {
                 },
             },
             tags: {
-                url: function (query, opts) {
+                url: function (query) {
                     return "/tags?page=" + query.page;
                 },
                 parse: function (src) {
