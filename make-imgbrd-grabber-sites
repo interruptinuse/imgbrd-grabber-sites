@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+set -ex
+
+SAVEDIR="$(pwd)/.."
+VERSION="$(git describe | sed "s/^v//")"
+
+mkdir -p build
+rm src/sites/package-lock.json
+pushd build
+cmake --target=sites ../src
+make sites
+popd
+TARBALL="$SAVEDIR/imgbrd-grabber-$VERSION-sites.tar"
+export TZ=UTC
+tar -cvf "$TARBALL" \
+  --owner=user:1000 --group=user:1000 --dereference \
+  --mtime="$(env TZ=UTC date -d 00:00)" \
+  --exclude-from=src/sites/exclude.txt \
+  --transform="s:^src:imgbrd-grabber-$VERSION/release:" src/sites
+gzip --no-name --best --rsyncable --force "$TARBALL"
