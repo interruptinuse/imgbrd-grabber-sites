@@ -1,12 +1,12 @@
 function completeImage(img) {
-    if (!img.file_url || img.file_url.length < 5) {
+    if ((!img.file_url || img.file_url.length < 5) && img.preview_url) {
         img.file_url = img.preview_url.replace("/preview/", "/");
     }
     return img;
 }
 export var source = {
     name: "Moebooru",
-    modifiers: ["rating:safe", "rating:questionable", "rating:explicit", "user:", "fav:", "fastfav:", "md5:", "source:", "id:", "width:", "height:", "score:", "mpixels:", "filesize:", "date:", "gentags:", "arttags:", "chartags:", "copytags:", "approver:", "parent:", "sub:", "status:any", "status:deleted", "status:active", "status:flagged", "status:pending", "order:id", "order:id_desc", "order:score", "order:score_asc", "order:mpixels", "order:mpixels_asc", "order:filesize", "order:landscape", "order:portrait", "order:favcount", "order:rank", "order:change", "order:change_desc", "parent:none", "unlocked:rating"],
+    modifiers: ["rating:safe", "rating:questionable", "rating:explicit", "user:", "fav:", "fastfav:", "md5:", "source:", "id:", "width:", "height:", "score:", "mpixels:", "filesize:", "date:", "gentags:", "arttags:", "chartags:", "copytags:", "approver:", "parent:", "sub:", "status:deleted", "status:active", "status:flagged", "status:pending", "order:id", "order:id_desc", "order:score", "order:score_asc", "order:mpixels", "order:mpixels_asc", "order:filesize", "order:landscape", "order:portrait", "order:favcount", "order:rank", "order:change", "order:change_desc", "parent:none", "unlocked:rating"],
     forcedTokens: [],
     tagFormat: {
         case: "lower",
@@ -172,8 +172,11 @@ export var source = {
                     return "/tag";
                 },
                 parse: function (src) {
-                    var contents = src.match(/<select[^>]* name="type"[^>]*>([\s\S]+)<\/select>/)[1];
-                    var results = Grabber.regexMatches('<option value="(?<id>\\d+)">(?<name>[^<]+)</option>', contents);
+                    var contents = src.match(/<select[^>]* name="type"[^>]*>([\s\S]+)<\/select>/);
+                    if (!contents) {
+                        return { error: "Parse error: could not find the tag type <select> tag" };
+                    }
+                    var results = Grabber.regexMatches('<option value="(?<id>\\d+)">(?<name>[^<]+)</option>', contents[1]);
                     var types = results.map(function (r) { return ({
                         id: r.id,
                         name: r.name.toLowerCase(),

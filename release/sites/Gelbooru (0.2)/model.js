@@ -1,5 +1,5 @@
 function completeImage(img) {
-    if (!img.file_url || img.file_url.length < 5) {
+    if ((!img.file_url || img.file_url.length < 5) && img.preview_url) {
         img.file_url = img.preview_url
             .replace("/thumbnails/", "/images/")
             .replace("/thumbnail_", "/");
@@ -17,6 +17,19 @@ export var source = {
         and: " ",
     },
     auth: {
+        url: {
+            type: "url",
+            fields: [
+                {
+                    id: "userId",
+                    key: "user_id",
+                },
+                {
+                    id: "apiKey",
+                    key: "api_key",
+                },
+            ],
+        },
         session: {
             type: "post",
             url: "/index.php?page=account&s=login&code=00",
@@ -80,24 +93,27 @@ export var source = {
             search: {
                 url: function (query, opts, previous) {
                     try {
-                        var page = (query.page - 1) * 42;
                         var search = query.search.replace(/(^| )order:/gi, "$1sort:");
-                        var pagePart = Grabber.pageUrl(page, previous, 20000, "&pid={page}", " id:<{min}&p=1", "&pid={page}");
                         var fav = search.match(/(?:^| )fav:(\d+)(?:$| )/);
                         if (fav) {
-                            var pageFav = (query.page - 1) * 50;
-                            var pagePartFav = Grabber.pageUrl(pageFav, previous, 20000, "&pid={page}", " id:<{min}&p=1", "&pid={page}");
-                            return "/index.php?page=favorites&s=view&id=" + fav[1] + pagePartFav;
+                            var pagePart = Grabber.pageUrl(query.page, previous, 20000, "&pid={page}", "&pid={page}", " id:<{min}&p=1", function (p) { return (p - 1) * 50; });
+                            return "/index.php?page=favorites&s=view&id=" + fav[1] + pagePart;
                         }
-                        return "/index.php?page=post&s=list&tags=" + encodeURIComponent(search) + pagePart;
+                        else {
+                            var pagePart = Grabber.pageUrl(query.page, previous, 20000, "&pid={page}", "&pid={page}", " id:<{min}&p=1", function (p) { return (p - 1) * 42; });
+                            return "/index.php?page=post&s=list&tags=" + encodeURIComponent(search) + pagePart;
+                        }
                     }
                     catch (e) {
                         return { error: e.message };
                     }
                 },
                 parse: function (src) {
+                    if (src.indexOf("Unable to search this deep") !== -1) {
+                        return { error: "Page too far" };
+                    }
                     var pageCountRaw = Grabber.regexMatch('<a href="[^"]+pid=(?<page>\\d+)[^"]*"[^>]*>[^<]+</a>\\s*(?:<b>(?<last>\\d+)</b>\\s*)?(?:</div>|<br ?/>)', src);
-                    var pageCount = pageCountRaw["last"] || pageCountRaw["page"];
+                    var pageCount = pageCountRaw && (pageCountRaw["last"] || pageCountRaw["page"]);
                     return {
                         images: Grabber.regexToImages('<span[^>]*(?: id="?\\w(?<id>\\d+)"?)?>\\s*<a[^>]*(?: id="?\\w(?<id_2>\\d+)"?)[^>]*>\\s*<img [^>]*(?:src|data-original)="(?<preview_url>[^"]+/thumbnail_(?<md5>[^.]+)\\.[^"]+)" [^>]*title="\\s*(?<tags>[^"]+)"[^>]*/?>\\s*</a>|<img\\s+class="preview"\\s+src="(?<preview_url_2>[^"]+/thumbnail_(?<md5_2>[^.]+)\\.[^"]+)" [^>]*title="\\s*(?<tags_2>[^"]+)"[^>]*/?>', src).map(completeImage),
                         tags: Grabber.regexToTags('<li class="tag-type-(?<type>[^"]+)">(?:[^<]*<a[^>]*>[^<]*</a>)*[^<]*<a[^>]*>(?<name>[^<]*)</a>[^<]*<span[^>]*>(?<count>\\d+)</span>[^<]*</li>', src),
@@ -111,19 +127,22 @@ export var source = {
                 },
                 parse: function (src) {
                     return {
-                        tags: Grabber.regexToTags('<li class="tag-type-(?<type>[^"]+)">(?:[^<]*<a[^>]*>[^<]*</a>)*[^<]*<a[^>]*>(?<name>[^<]*)</a>[^<]*<span[^>]*>(?<count>\\d+)</span>[^<]*</li>', src),
+                        tags: Grabber.regexToTags('<li class="tag-type-(?<type>[^"]+)">(?:[^<]*(?:<span[^>]*>[^<]*)?<a[^>]*>[^<]*</a>(?:[^<]*</span>)?)*[^<]*<a[^>]*>(?<name>[^<]*)</a>[^<]*<span[^>]*>(?<count>\\d+)</span>[^<]*</li>', src),
                         imageUrl: Grabber.regexToConst("url", '<img[^>]+src="([^"]+)"[^>]+onclick="Note\\.toggle\\(\\);"[^>]*/>', src),
                     };
                 },
             },
+            tagTypes: false,
             tags: {
                 url: function (query) {
+                    var sorts = { count: "desc", date: "asc", name: "asc" };
+                    var orderBys = { count: "index_count", date: "updated", name: "tag" };
                     var page = (query.page - 1) * 50;
-                    return "/index.php?page=tags&s=list&pid=" + page;
+                    return "/index.php?page=tags&s=list&pid=" + page + "&sort=" + sorts[query.order] + "&order_by=" + orderBys[query.order];
                 },
                 parse: function (src) {
                     return {
-                        tags: Grabber.regexToTags('<tr>\\s*<td>(?<count>\\d+)</td>\\s*<td><span class="tag-type-(?<type>[^"]+)"><a[^>]+>(?<name>.+?)</a></span></td>', src),
+                        tags: Grabber.regexToTags('<td><span class="tag-type-(?<type>[^"]+)"><a[^>]+>(?<name>.+?)</a></span>\\s*<span class="tag-count">(?<count>\\d+)</span></td>', src),
                     };
                 },
             },

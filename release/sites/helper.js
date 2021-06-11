@@ -91,22 +91,28 @@ addHelper("countToInt", function (str) {
     return Math.round(count);
 });
 addHelper("fileSizeToInt", function (str) {
-    var res = str.match(/^(\d+)\s*(\w+)$/);
+    if (typeof str !== "string") {
+        return str;
+    }
+    var res = str.match(/^(\d+(?:\.\d+))\s*(\w+)$/);
     if (res) {
-        var val = parseInt(res[1], 10);
+        var val = parseFloat(res[1]);
         var unit = res[2].toLowerCase();
         if (unit === "mb") {
-            return val * 1024 * 1024;
+            return Math.round(val * 1024 * 1024);
         }
         if (unit === "kb") {
-            return val * 1024;
+            return Math.round(val * 1024);
         }
-        return val;
+        return Math.round(val);
     }
     return parseInt(str, 10);
 });
-addHelper("fixPageUrl", function (url, page, previous) {
-    url = url.replace("{page}", String(page));
+addHelper("fixPageUrl", function (url, page, previous, pageTransformer) {
+    if (!pageTransformer) {
+        pageTransformer = function (p) { return p; };
+    }
+    url = url.replace("{page}", String(pageTransformer(page)));
     if (previous) {
         url = url.replace("{min}", previous.minId);
         url = url.replace("{max}", previous.maxId);
@@ -115,15 +121,16 @@ addHelper("fixPageUrl", function (url, page, previous) {
     }
     return url;
 });
-addHelper("pageUrl", function (page, previous, limit, ifBelow, ifPrev, ifNext) {
-    if (page <= limit || limit < 0) {
-        return Grabber.fixPageUrl(ifBelow, page, previous);
+addHelper("pageUrl", function (page, previous, limit, ifBelow, ifPrev, ifNext, pageTransformer) {
+    var pageLimit = pageTransformer ? pageTransformer(page) : page;
+    if (pageLimit <= limit || limit < 0) {
+        return Grabber.fixPageUrl(ifBelow, page, previous, pageTransformer);
     }
     if (previous && previous.page === page + 1) {
-        return Grabber.fixPageUrl(ifPrev, page, previous);
+        return Grabber.fixPageUrl(ifPrev, page, previous, pageTransformer);
     }
     if (previous && previous.page === page - 1) {
-        return Grabber.fixPageUrl(ifNext, page, previous);
+        return Grabber.fixPageUrl(ifNext, page, previous, pageTransformer);
     }
     throw new Error("You need valid previous page information to browse that far");
 });
@@ -138,9 +145,23 @@ addHelper("regexToImages", function (regexp, src) {
                 match[key] = json[key];
             }
         }
+        if (match.id) {
+            match.id = parseInt(match.id, 10);
+        }
+        if (match.file_size) {
+            match.file_size = Grabber.fileSizeToInt(match.file_size);
+        }
         images.push(match);
     }
     return images;
+});
+addHelper("pick", function (obj, keys) {
+    return keys.reduce(function (ret, key) {
+        if (key in obj && obj[key] !== undefined) {
+            ret[key] = obj[key];
+        }
+        return ret;
+    }, {});
 });
 addHelper("regexToTags", function (regexp, src) {
     var tags = [];
@@ -154,7 +175,7 @@ addHelper("regexToTags", function (regexp, src) {
         if ("count" in match) {
             match["count"] = Grabber.countToInt(match["count"]);
         }
-        tags.push(match);
+        tags.push(Grabber.pick(match, ["id", "name", "count", "type", "typeId"]));
         uniques[match["name"]] = true;
     }
     return tags;

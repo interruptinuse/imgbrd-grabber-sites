@@ -22,6 +22,9 @@ var completeImage = function (data) {
     if (!data["file_url"] || data["file_url"].length < 5) {
         data["file_url"] = data["preview_url"].replace("/preview/", "/");
     }
+    if ("id" in data) {
+        data.id = parseInt(data.id, 10);
+    }
     return data;
 };
 export var source = {

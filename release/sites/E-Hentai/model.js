@@ -12,6 +12,9 @@ function cssToObject(css) {
 }
 function sizeToInt(size) {
     var match = size.match(/^(-?)(\d+)\w*$/);
+    if (!match) {
+        return 0;
+    }
     var val = parseInt(match[2], 10);
     if (match[1].length > 0) {
         return -val;
@@ -90,6 +93,9 @@ export var source = {
                 },
                 parse: function (src) {
                     var rows = src.match(/<tr[^>]*>(.+?)<\/tr>/g);
+                    if (!rows) {
+                        return { error: "Parse error: no <tr> tag found" };
+                    }
                     var images = rows.map(function (row) {
                         var match = {};
                         match["type"] = "gallery";
@@ -151,6 +157,17 @@ export var source = {
                         imageCount: Grabber.countToInt(Grabber.regexToConst("count", '<p class="gpc">Showing [0-9,]+ - [0-9,]+ of (?<count>[0-9,]+) images</p>', src)),
                         urlNextPage: Grabber.regexToConst("url", '<td[^>]*><a[^>]+href="(?<url>[^"]+)"[^>]*>&gt;</a></td>', src),
                         urlPrevPage: Grabber.regexToConst("url", '<td[^>]*><a[^>]+href="(?<url>[^"]+)"[^>]*>&lt;</a></td>', src),
+                    };
+                },
+            },
+            details: {
+                url: function (id, md5) {
+                    return { error: "Not supported (view token)" };
+                },
+                parse: function (src) {
+                    // Grabber.regexMatches("<div>(?<filename>[^:]*) :: (?<width>\\d+) x (?<height>\\d+) :: (?<filesize>[^ ]+ [KM]B)</div>", src);
+                    return {
+                        imageUrl: Grabber.regexToConst("url", '<img id="img" src="(?<url>[^"]+)"', src),
                     };
                 },
             },

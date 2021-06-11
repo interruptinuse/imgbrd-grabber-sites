@@ -32,7 +32,7 @@ function parseTweetMedia(sc, original, media) {
     var d = {};
     var sizes = media["sizes"];
     // Meta-data
-    d.id = media["id_str"];
+    d.id = original["id_str"];
     d.author = sc["user"]["screen_name"];
     d.author_id = sc["user"]["id_str"];
     d.created_at = sc["created_at"];
@@ -64,7 +64,7 @@ function parseTweetMedia(sc, original, media) {
         }
     }
     else {
-        d.file_url = media["media_url_https"] + ":large";
+        d.file_url = media["media_url_https"] + ":orig";
         d.ext = getExtension(media["media_url_https"]);
     }
     // Additional tokens
@@ -82,15 +82,15 @@ function parseTweet(sc, gallery) {
         sc = sc["retweeted_status"];
     }
     if (!("extended_entities" in sc)) {
-        return false;
+        return { id: original["id_str"] };
     }
     var entities = sc["extended_entities"];
     if (!("media" in entities)) {
-        return false;
+        return { id: original["id_str"] };
     }
     var medias = entities["media"];
     if (!medias || medias.length === 0) {
-        return false;
+        return { id: original["id_str"] };
     }
     if (medias.length > 1) {
         if (gallery) {
@@ -99,6 +99,7 @@ function parseTweet(sc, gallery) {
         var d = parseTweetMedia(sc, original, medias[0]);
         d.type = "gallery";
         d.gallery_count = medias.length;
+        d.id = original["id_str"];
         return d;
     }
     return parseTweetMedia(sc, original, medias[0]);
@@ -125,6 +126,7 @@ export var source = {
                         var search = parseSearch(query.search.split(" "));
                         var pageUrl = Grabber.pageUrl(query.page, previous, 1, "", "&since_id={max}", "&max_id={min-1}");
                         var params = [
+                            "count=" + opts.limit,
                             "include_rts=" + (search.retweets ? "true" : "false"),
                             "exclude_replies=" + (!search.replies ? "true" : "false"),
                             "tweet_mode=extended",
@@ -150,7 +152,7 @@ export var source = {
             },
             gallery: {
                 url: function (query, opts) {
-                    return "/1.1/statuses/show.json?id=" + query.id;
+                    return "/1.1/statuses/show.json?id=" + query.id + "&tweet_mode=extended";
                 },
                 parse: function (src) {
                     var data = JSON.parse(src);

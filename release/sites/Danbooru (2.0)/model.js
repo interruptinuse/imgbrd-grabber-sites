@@ -37,6 +37,10 @@ export var source = {
         precedence: "or",
     },
     auth: {
+        httpBasic: {
+            type: "http_basic",
+            passwordType: "apiKey",
+        },
         url: {
             type: "url",
             fields: [
@@ -143,7 +147,7 @@ export var source = {
             },
             tags: {
                 url: function (query, opts) {
-                    return "/tags.json?limit=" + opts.limit + "&page=" + query.page;
+                    return "/tags.json?limit=" + opts.limit + "&search[order]=" + query.order + "&page=" + query.page;
                 },
                 parse: function (src) {
                     var map = {
@@ -234,7 +238,7 @@ export var source = {
             },
             tags: {
                 url: function (query, opts) {
-                    return "/tags.xml?limit=" + opts.limit + "&page=" + query.page;
+                    return "/tags.xml?limit=" + opts.limit + "&search[order]=" + query.order + "&page=" + query.page;
                 },
                 parse: function (src) {
                     var map = {
@@ -281,7 +285,7 @@ export var source = {
                     var wiki = Grabber.regexToConst("wiki", '<div id="excerpt"(?:[^>]+)>(?<wiki>.+?)</div>', src);
                     wiki = wiki ? wiki.replace(/href="\/wiki_pages\/show_or_new\?title=([^"]+)"/g, 'href="$1"') : wiki;
                     return {
-                        tags: Grabber.regexToTags('<li class="category-(?<typeId>[^"]+)">(?:\\s*<a class="wiki-link" href="[^"]+">\\?</a>)?(?:\\s*<a[^>]* class="search-inc-tag">[^<]+</a>\\s*<a[^>]* class="search-exl-tag">[^<]+</a>)?\\s*<a class="search-tag"\\s+[^>]*href="[^"]+"[^>]*>(?<name>[^<]+)</a>\\s*<span class="post-count">(?<count>[^<]+)</span>\\s*</li>', src),
+                        tags: Grabber.regexToTags('<li class="(?:category|tag-type)-(?<typeId>[^"]+)"[^>]*>(?:\\s*<a class="wiki-link" href="[^"]+">\\?</a>)?(?:\\s*<a[^>]* class="search-inc-tag">[^<]+</a>\\s*<a[^>]* class="search-exl-tag">[^<]+</a>)?\\s*<a class="search-tag"\\s+[^>]*href="[^"]+"[^>]*>(?<name>[^<]+)</a>\\s*<span class="post-count"[^>]*>(?<count>[^<]+)</span>\\s*</li>', src),
                         images: Grabber.regexToImages('<article[^>]* id="[^"]*" class="[^"]*"\\s+data-id="(?<id>[^"]*)"\\s+data-has-sound="[^"]*"\\s+data-tags="(?<tags>[^"]*)"\\s+data-pools="(?<pools>[^"]*)"(?:\\s+data-uploader="(?<author>[^"]*)")?\\s+data-approver-id="(?<approver>[^"]*)"\\s+data-rating="(?<rating>[^"]*)"\\s+data-width="(?<width>[^"]*)"\\s+data-height="(?<height>[^"]*)"\\s+data-flags="(?<flags>[^"]*)"\\s+data-parent-id="(?<parent_id>[^"]*)"\\s+data-has-children="(?<has_children>[^"]*)"\\s+data-score="(?<score>[^"]*)"\\s+data-views="[^"]*"\\s+data-fav-count="(?<fav_count>[^"]*)"\\s+data-pixiv-id="[^"]*"\\s+data-file-ext="(?<ext>[^"]*)"\\s+data-source="(?<source>[^"]*)"\\s+data-top-tagger="[^"]*"\\s+data-uploader-id="[^"]*"\\s+data-normalized-source="[^"]*"\\s+data-is-favorited="[^"]*"\\s+data-md5="(?<md5>[^"]*)"\\s+data-file-url="(?<file_url>[^"]*)"\\s+data-large-file-url="(?<sample_url>[^"]*)"\\s+data-preview-file-url="(?<preview_url>[^"]*)"', src).map(completeImage),
                         wiki: wiki,
                         pageCount: Grabber.regexToConst("page", '>(?<page>\\d+)</(?:a|span)></li><li[^<]*><(?:a|span)[^>]*>(?:&gt;&gt;|<i class="[^"]+"></i>)<', src),
@@ -305,8 +309,11 @@ export var source = {
                     return "/tags";
                 },
                 parse: function (src) {
-                    var contents = src.match(/<select[^>]* name="search\[category\]"[^>]*>([\s\S]+)<\/select>/)[1];
-                    var results = Grabber.regexMatches('<option value="(?<id>\\d+)">(?<name>[^<]+)</option>', contents);
+                    var contents = src.match(/<select[^>]* name="search\[category\]"[^>]*>([\s\S]+)<\/select>/);
+                    if (!contents) {
+                        return { error: "Parse error: could not find the tag type <select> tag" };
+                    }
+                    var results = Grabber.regexMatches('<option value="(?<id>\\d+)">(?<name>[^<]+)</option>', contents[1]);
                     var types = results.map(function (r) { return ({
                         id: r.id,
                         name: r.name.toLowerCase(),
@@ -316,7 +323,7 @@ export var source = {
             },
             tags: {
                 url: function (query, opts) {
-                    return "/tags?limit=" + opts.limit + "&page=" + query.page;
+                    return "/tags?limit=" + opts.limit + "&search[order]=" + query.order + "&page=" + query.page;
                 },
                 parse: function (src) {
                     return {
@@ -330,7 +337,8 @@ export var source = {
                 },
                 parse: function (src) {
                     return src.indexOf("Running Danbooru v2") !== -1
-                        || src.search(/Running Danbooru <a[^>]*>v2/) !== -1;
+                        || src.search(/Running Danbooru <a[^>]*>v2/) !== -1
+                        || src.indexOf("https://github.com/danbooru/danbooru") !== -1;
                 },
             },
         },

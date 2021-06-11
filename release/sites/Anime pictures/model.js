@@ -38,7 +38,7 @@ function sizeToUrl(size, key, ret) {
         ret.push(key + "_n=" + op);
     }
 }
-function searchToUrl(search) {
+function searchToUrl(page, search, previous) {
     var parts = search.split(" ");
     var tags = [];
     var denied = [];
@@ -65,18 +65,26 @@ function searchToUrl(search) {
         else if (part[0] === "-") {
             denied.push(encodeURIComponent(tag.substr(1)));
         }
-        else {
+        else if (tag.length > 0) {
             tags.push(encodeURIComponent(tag));
         }
     }
-    ret.unshift("search_tag=" + tags.join(" "));
-    ret.unshift("denied_tags=" + denied.join(" "));
+    if (tags.length > 0) {
+        ret.unshift("search_tag=" + tags.join(" "));
+    }
+    if (denied.length > 0) {
+        ret.unshift("denied_tags=" + denied.join(" "));
+    }
+    if (previous && previous.minDate && previous.page === page - 1) {
+        ret.push("last_page=" + (previous.page - 1));
+        ret.push("last_post_date=" + previous.minDate);
+    }
     return ret.join("&");
 }
 export var source = {
     name: "Anime pictures",
     modifiers: ["width:", "height:", "ratio:", "order:", "filetype:"],
-    forcedTokens: [],
+    forcedTokens: ["tags"],
     tagFormat: {
         case: "lower",
         wordSeparator: " ",
@@ -113,9 +121,9 @@ export var source = {
             name: "JSON",
             auth: [],
             search: {
-                url: function (query, opts) {
+                url: function (query, opts, previous) {
                     var page = query.page - 1;
-                    return "/pictures/view_posts/" + page + "?" + searchToUrl(query.search) + "&posts_per_page=" + opts.limit + "&lang=en&type=json";
+                    return "/pictures/view_posts/" + page + "?" + searchToUrl(query.page, query.search, previous) + "&posts_per_page=" + opts.limit + "&lang=en&type=json";
                 },
                 parse: function (src) {
                     var map = {
@@ -139,7 +147,7 @@ export var source = {
                     return {
                         images: images,
                         imageCount: data["posts_count"],
-                        pageCount: data["max_pages"] + 1,
+                        pageCount: data["max_pages"] + 1, // max_pages is an index, not a count, and pages start at 0
                     };
                 },
             },
@@ -172,9 +180,9 @@ export var source = {
             auth: [],
             forcedLimit: 80,
             search: {
-                url: function (query) {
+                url: function (query, opts, previous) {
                     var page = query.page - 1;
-                    return "/pictures/view_posts/" + page + "?" + searchToUrl(query.search) + "&lang=en";
+                    return "/pictures/view_posts/" + page + "?" + searchToUrl(query.page, query.search, previous) + "&lang=en";
                 },
                 parse: function (src) {
                     var wiki = Grabber.regexToConst("wiki", '<div class="posts_body_head">\\s*<h2>[^<]+</h2>\\s*(?<wiki>.+?)\s*</div>', src);
