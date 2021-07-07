@@ -8,7 +8,7 @@ VERSION="$(git describe | sed "s/^v//")"
 mkdir -p build
 rm src/sites/package-lock.json
 pushd build
-cmake --target=sites ../src
+cmake ../src
 make sites
 popd
 TARBALL="$SAVEDIR/imgbrd-grabber-$VERSION-sites.tar"
