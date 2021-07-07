@@ -1,24 +1,6 @@
 function completeImage(img) {
-    var resourcesURL = "https://static1.e621.net/data";
-    var md5PartOne = img.md5.slice(0, 2);
-    var md5PartTwo = img.md5.slice(2, 4);
-    if (img.ext && img.ext[0] === ".") {
-        img.ext = img.ext.substr(1);
-    }
-    if (!img.file_url || img.file_url.length < 5) {
-        img.file_url = resourcesURL + "/" + md5PartOne + "/" + md5PartTwo + "/" + img.md5 + "." + (img.ext || "jpg");
-    }
-    else {
-        img.file_url = img.file_url
-            .replace("/preview/", "/")
-            .replace("/ssd/", "/")
-            .replace("/sample/[^.]*sample-", "/");
-    }
-    if (!img.sample_url || img.sample_url.length < 5) {
-        img.sample_url = resourcesURL + "/sample/" + md5PartOne + "/" + md5PartTwo + "/" + img.md5 + "." + (img.ext || "jpg");
-    }
-    if (!img.preview_url || img.preview_url.length < 5) {
-        img.preview_url = resourcesURL + "/preview/" + md5PartOne + "/" + md5PartTwo + "/" + img.md5 + "." + (img.ext || "jpg");
+    if (!img.md5 && img.file_url) {
+        img.md5 = img.file_url.substring(img.file_url.lastIndexOf("/") + 1, img.file_url.lastIndexOf("."));
     }
     return img;
 }
@@ -34,6 +16,10 @@ export var source = {
         and: " ",
     },
     auth: {
+        httpBasic: {
+            type: "http_basic",
+            passwordType: "apiKey",
+        },
         url: {
             type: "url",
             fields: [
@@ -171,15 +157,11 @@ export var source = {
                     if (match) {
                         return { error: match[1] };
                     }
-                    // Broken due to -status:deleted added to search query
-                    // let wiki = Grabber.regexToConst("wiki", '<div id="excerpt"(?:[^>]+)>(?<wiki>.+?)</div>', src);
-                    // wiki = wiki ? wiki.replace(/href="\/wiki_pages\/show_or_new\?title=([^"]+)"/g, 'href="$1"') : wiki;
-                    var wiki = "<p>This feature is now broken due to '-status:deleted' is added to search tag.</p>";
+                    var wiki = Grabber.regexToConst("wiki", '<div id="excerpt"(?:[^>]+)>(?<wiki>.+?)</div>', src);
+                    wiki = wiki ? wiki.replace(/href="\/wiki_pages\/show_or_new\?title=([^"]+)"/g, 'href="$1"') : wiki;
                     return {
                         tags: Grabber.regexToTags('<li class="category-(?<typeId>[^"]+)">(?:\\s*<a class="wiki-link"[^>]* href="[^"]+">\\?</a>)?(?:\\s*<a[^>]* class="search-inc-tag">[^<]+</a>\\s*<a[^>]* class="search-exl-tag">[^<]+</a>)?\\s*<a[^>]* class="search-tag"\\s+[^>]*href="[^"]+"[^>]*>(?<name>[^<]+)</a>\\s*<span class="post-count">(?<count>[^<]+)</span>\\s*</li>', src),
-                        images: Grabber.regexToImages(' '),
-                        // Not enough infomation in HTML
-                        // images: Grabber.regexToImages('<article[^>]* id="[^"]*" class="[^"]*"\\s+data-id="(?<id>[^"]*)"\\s+data-has-sound="[^"]*"\\s+data-tags="(?<tags>[^"]*)"\\s+data-rating="(?<rating>[^"]*)"\\s+data-flags="(?<flags>[^"]*)"\\s+data-uploader-id="[^"]*"(?:\\s+data-uploader="(?<author>[^"]*)")?\\s+data-file-url="(?<file_url>[^"]*)"\\s+data-large-file-url="(?<sample_url>[^"]*)"\\s+data-preview-file-url="(?<preview_url>[^"]*)"', src).map(completeImage),
+                        images: Grabber.regexToImages('<article[^>]* id="[^"]*" class="[^"]*"\\s+data-id="(?<id>[^"]*)"\\s+data-has-sound="[^"]*"\\s+data-tags="(?<tags>[^"]*)"\\s+data-rating="(?<rating>[^"]*)"\\s+data-flags="(?<flags>[^"]*)"\\s+data-uploader-id="(?<creator_id>[^"]*)"(?:\\s+data-uploader="(?<author>[^"]*)")?\\s+[^>]*data-file-url="(?<file_url>[^"]*)"\\s+data-large-file-url="(?<sample_url>[^"]*)"\\s+data-preview-file-url="(?<preview_url>[^"]*)"', src).map(completeImage),
                         wiki: wiki,
                         pageCount: Grabber.regexToConst("page", '>(?<page>\\d+)</(?:a|span)></li><li[^<]*><(?:a|span)[^>]*>(?:&gt;&gt;|<i class="[^"]+"></i>)<', src),
                     };

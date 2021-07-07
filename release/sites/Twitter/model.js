@@ -114,11 +114,17 @@ export var source = {
             authType: "header_basic",
             tokenUrl: "/oauth2/token",
         },
+        /*oauth1: {
+            type: "oauth1",
+            temporaryCredentialsUrl: "/oauth/request_token",
+            authorizationUrl: "/oauth/authenticate",
+            tokenCredentialsUrl: "/oauth/access_token",
+        },*/
     },
     apis: {
         json: {
             name: "JSON",
-            auth: ["oauth2"],
+            auth: ["oauth2" /*, "oauth1"*/],
             maxLimit: 200,
             search: {
                 url: function (query, opts, previous) {

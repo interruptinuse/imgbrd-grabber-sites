@@ -108,26 +108,29 @@ export var source = {
                     return { images: images };
                 },
             },
-            tags: {
-                url: function (query, opts) {
-                    return "/tag/index.json?limit=" + opts.limit + "&page=" + query.page;
+            // Disabled because the "page" parameter doesn't work
+            /*tags: {
+                url: (query: ITagsQuery, opts: IUrlOptions): string => {
+                    return "/tag/index.json?limit=" + opts.limit + "&order=" + query.order + "&page=" + query.page;
                 },
-                parse: function (src) {
-                    var map = {
+                parse: (src: string): IParsedTags => {
+                    const map = {
                         "id": "id",
                         "name": "name",
                         "count": "count",
                         "typeId": "type",
                     };
-                    var data = JSON.parse(src);
-                    var tags = [];
-                    for (var _i = 0, data_2 = data; _i < data_2.length; _i++) {
-                        var tag = data_2[_i];
+
+                    const data = JSON.parse(src);
+
+                    const tags: ITag[] = [];
+                    for (const tag of data) {
                         tags.push(Grabber.mapFields(tag, map));
                     }
-                    return { tags: tags };
+
+                    return { tags };
                 },
-            },
+            },*/
         },
         xml: {
             name: "XML",
@@ -147,8 +150,8 @@ export var source = {
                     var parsed = Grabber.typedXML(Grabber.parseXML(src));
                     var data = Grabber.makeArray(parsed.posts.post);
                     var images = [];
-                    for (var _i = 0, data_3 = data; _i < data_3.length; _i++) {
-                        var dta = data_3[_i];
+                    for (var _i = 0, data_2 = data; _i < data_2.length; _i++) {
+                        var dta = data_2[_i];
                         var image = "@attributes" in dta && "id" in dta["@attributes"] ? dta["@attributes"] : dta;
                         images.push(completeImage(image));
                     }
@@ -158,27 +161,30 @@ export var source = {
                     };
                 },
             },
-            tags: {
-                url: function (query, opts) {
-                    return "/tag/index.xml?limit=" + opts.limit + "&page=" + query.page;
+            // Disabled because the "page" parameter doesn't work
+            /*tags: {
+                url: (query: ITagsQuery, opts: IUrlOptions): string => {
+                    return "/tag/index.xml?limit=" + opts.limit + "&order=" + query.order + "&page=" + query.page;
                 },
-                parse: function (src) {
-                    var map = {
+                parse: (src: string): IParsedTags => {
+                    const map = {
                         "id": "id",
                         "name": "name",
                         "count": "count",
                         "typeId": "type",
                     };
-                    var data = Grabber.makeArray(Grabber.typedXML(Grabber.parseXML(src)).tags.tag);
-                    var tags = [];
-                    for (var _i = 0, data_4 = data; _i < data_4.length; _i++) {
-                        var dta = data_4[_i];
-                        var tag = "@attributes" in dta && "id" in dta["@attributes"] ? dta["@attributes"] : dta;
+
+                    const data = Grabber.makeArray(Grabber.typedXML(Grabber.parseXML(src)).tags.tag);
+
+                    const tags: ITag[] = [];
+                    for (const dta of data) {
+                        const tag: any = "@attributes" in dta && "id" in dta["@attributes"] ? dta["@attributes"] : dta;
                         tags.push(Grabber.mapFields(tag, map));
                     }
-                    return { tags: tags };
+
+                    return { tags };
                 },
-            },
+            },*/
         },
         html: {
             name: "Regex",
@@ -217,13 +223,30 @@ export var source = {
                     };
                 },
             },
+            tagTypes: {
+                url: function () {
+                    return "/tag";
+                },
+                parse: function (src) {
+                    var contents = src.match(/<select id="type" name="type">([\s\S]+)<\/select>/);
+                    if (!contents) {
+                        return { error: "Parse error: could not find the tag type <select> tag" };
+                    }
+                    var results = Grabber.regexMatches('<option value="(?<id>\\d+)">(?<name>[^<]+)</option>', contents[1]);
+                    var types = results.map(function (r) { return ({
+                        id: r.id,
+                        name: r.name.toLowerCase(),
+                    }); });
+                    return { types: types };
+                },
+            },
             tags: {
                 url: function (query, opts) {
-                    return "/tag/index?limit=" + opts.limit + "&page=" + query.page;
+                    return "/tag/index?limit=" + opts.limit + "&order=" + query.order + "&page=" + query.page;
                 },
                 parse: function (src) {
                     return {
-                        tags: Grabber.regexToTags("<tr[^>]*>\\s*<td[^>]*>(?<count>\\d+)</td>\\s*<td[^>]*>\\s*(?:<a[^>]+>\\?</a>\\s*)?<a[^>]+>(?<name>.+?)</a>\\s*</td>\\s*<td[^>]*>\\s*(?<type>.+?)\\s*\\([^()]+\\)\\s*</td>", src),
+                        tags: Grabber.regexToTags("<tr[^>]*>\\s*<td[^>]*>(?<count>\\d+)</td>\\s*<td[^>]*>\\s*(?:<a[^>]+>\\?</a>\\s*)?<a[^>]+>(?<name>.+?)</a>\\s*</td>\\s*<td[^>]*>\\s*(?<type>.+?)\\s*(?:\\([^()]+\\)\\s*)?</td>", src),
                     };
                 },
             },
