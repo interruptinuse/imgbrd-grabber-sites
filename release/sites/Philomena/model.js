@@ -142,6 +142,10 @@ export var source = {
                 },
                 parse: function (src) {
                     var data = JSON.parse(src);
+                    // Newer versions of Philomena wrap details in an "image" object
+                    if ("image" in data && !("representations" in data)) {
+                        data = data["image"];
+                    }
                     return {
                         createdAt: data["created_at"],
                         imageUrl: data["representations"]["full"],

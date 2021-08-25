@@ -79,6 +79,7 @@ export var source = {
                         return { error: data["message"] };
                     }
                     var images = [];
+                    var invalid = 0;
                     for (var _i = 0, _a = data["posts"]; _i < _a.length; _i++) {
                         var image = _a[_i];
                         var img = Grabber.mapFields(image, map);
@@ -103,10 +104,16 @@ export var source = {
                             }
                         }
                         img.tags = tags;
-                        if (!image.file.md5 || image.file.md5.length === 0) {
+                        if (!img.md5 || img.md5.length === 0) {
                             continue;
                         }
+                        if (img.md5 && !img.file_url) {
+                            invalid++;
+                        }
                         images.push(completeImage(img));
+                    }
+                    if (invalid > 0) {
+                        console.warn(invalid + " image(s) without URL found, login to view them");
                     }
                     return { images: images };
                 },
@@ -156,6 +163,10 @@ export var source = {
                     var match = src.match(/<div id="page">\s*<p>([^<]+)<\/p>\s*<\/div>/m);
                     if (match) {
                         return { error: match[1] };
+                    }
+                    var warn = src.match(/<div class="[^"]*hidden-posts-notice">(.+?)<\/div>/m);
+                    if (warn) {
+                        console.warn(warn[1]);
                     }
                     var wiki = Grabber.regexToConst("wiki", '<div id="excerpt"(?:[^>]+)>(?<wiki>.+?)</div>', src);
                     wiki = wiki ? wiki.replace(/href="\/wiki_pages\/show_or_new\?title=([^"]+)"/g, 'href="$1"') : wiki;

@@ -23,8 +23,15 @@ function parseSearch(search) {
     }
     return { query: query, order: order };
 }
+function completeImage(img) {
+    if (!img.id && img.page_url) {
+        img.id = Grabber.regexToConst("id", "-(?<id>\\d+)$", img.page_url);
+    }
+    return img;
+}
 export var source = {
     name: "DeviantArt",
+    forcedTokens: ["file_url"],
     apis: {
         rss: {
             name: "RSS",
@@ -50,22 +57,51 @@ export var source = {
                         var credit = Array.isArray(image["media:credit"]) ? image["media:credit"][0] : image["media:credit"];
                         var rating = image["media:rating"]["#text"].trim();
                         var img = {
-                            id: Grabber.regexToConst("id", "-(?<id>\\d+)$", image["link"]["#text"]),
-                            // page_url: image["link"]["#text"],
+                            page_url: image["link"]["#text"],
                             created_at: image["pubDate"]["#text"],
                             name: image["media:title"]["#text"],
                             author: credit["#text"],
                             tags: (image["media:keywords"]["#text"] || "").trim().split(", "),
                             preview_url: thumbnail && (thumbnail["#text"] || thumbnail["@attributes"]["url"]),
-                            file_url: image["media:content"]["#text"] || image["media:content"]["@attributes"]["url"],
-                            width: image["media:content"]["@attributes"]["width"],
-                            height: image["media:content"]["@attributes"]["height"],
+                            preview_width: thumbnail && thumbnail["@attributes"]["width"],
+                            preview_height: thumbnail && thumbnail["@attributes"]["height"],
+                            sample_url: image["media:content"]["#text"] || image["media:content"]["@attributes"]["url"],
+                            sample_width: image["media:content"]["@attributes"]["width"],
+                            sample_height: image["media:content"]["@attributes"]["height"],
                             rating: rating === "nonadult" ? "safe" : (rating === "adult" ? "explicit" : "questionable"),
                         };
-                        img.sample_url = img.file_url;
-                        images.push(img);
+                        images.push(completeImage(img));
                     }
                     return { images: images };
+                },
+            },
+        },
+        html: {
+            name: "Regex",
+            auth: [],
+            forcedLimit: 24,
+            search: {
+                url: function (query, opts) {
+                    var parsed = parseSearch(query.search);
+                    return "/search/deviations?q=" + encodeURIComponent(parsed.query) + "&page=" + query.page;
+                },
+                parse: function (src) {
+                    return {
+                        images: Grabber.regexToImages('<section.*?<a data-hook="deviation_link" href="(?<page_url>[^"]+)"[^>]*>.*?<img[^>]+src="(?<preview_url>[^"]+)"[^>]*>.*?<h2[^<]*>(?<name>[^<]+)</h2>', src).map(completeImage),
+                        tags: Grabber.regexToTags('<a href="[^"]*/search/deviations\\?q=[^"]+" data-tag="(?<name>[^"]+)"[^>]*>[^<]+</a>', src),
+                        imageCount: Grabber.regexToConst("count", '>(?<count>\\d+) results<', src),
+                    };
+                },
+            },
+            details: {
+                url: function (id, md5) {
+                    return { error: "Not supported (page_url)" };
+                },
+                parse: function (src) {
+                    return {
+                        tags: Grabber.regexToTags('<a href="[^"]*/tag/(?<name>[^"]+)"', src),
+                        imageUrl: Grabber.regexToConst("url", '<img[^>]*aria-hidden="true"[^>]+src="(?<url>[^"]+)"', src),
+                    };
                 },
             },
         },
