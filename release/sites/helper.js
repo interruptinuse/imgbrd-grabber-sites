@@ -94,7 +94,7 @@ addHelper("fileSizeToInt", function (str) {
     if (typeof str !== "string") {
         return str;
     }
-    var res = str.match(/^(\d+(?:\.\d+))\s*(\w+)$/);
+    var res = str.match(/^(\d+(?:\.\d+)?)\s*(\w+)$/);
     if (res) {
         var val = parseFloat(res[1]);
         var unit = res[2].toLowerCase();

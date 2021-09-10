@@ -165,7 +165,7 @@ export var source = {
                     if (query.search.length > 0) {
                         return { error: "Tag search is impossible with Shimmie RSS API." };
                     }
-                    return "/index.php?q=/rss/images/" + query.page;
+                    return "/rss/images/" + query.page;
                 },
                 parse: function (src) {
                     var data = Grabber.makeArray(Grabber.parseXML(src).rss.channel.item);
@@ -212,9 +212,9 @@ export var source = {
                 parseErrors: true,
                 url: function (query) {
                     if (query.search.length > 0) {
-                        return "/index.php?q=/post/list/" + transformQuery(query.search) + "/" + query.page;
+                        return "/post/list/" + transformQuery(query.search) + "/" + query.page;
                     }
-                    return "/index.php?q=/post/list/" + query.page;
+                    return "/post/list/" + query.page;
                 },
                 parse: function (src, statusCode) {
                     var _a;
@@ -253,7 +253,7 @@ export var source = {
             },
             details: {
                 url: function (id, md5) {
-                    return "/index.php?q=/post/view/" + id;
+                    return "/post/view/" + id;
                 },
                 parse: parseDetails,
             },
